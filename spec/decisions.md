@@ -110,3 +110,25 @@ AXObserver push updates are the roadmap replacement for the catch-all.
   layout payloads, window Space memberships, bounds), have a human run one
   gesture slowly, read the timestamped log. All instrumentation was removed
   once the design stopped depending on transition inference.
+
+## D12 — Reclaim the bar's strip by resizing after the fact
+
+Zoomed/tiled windows fill the visible frame to the screen's bottom edge and
+hide under the bar. Only the Dock can *reserve* screen space — there is no
+public API for it — so the fix is reactive, the same approach other taskbar
+apps use: detect a window overlapping the bar and shrink it via AX. Two
+scoping choices:
+
+- **Full-height windows only** (top at the menu bar, bottom in the bar's
+  strip — the shape zoom and tiling produce). Clamping *any* overlap would
+  fight the user while they drag a window low on purpose.
+- **Detection via the tick's focused-window poll, extended to size.** Zoom
+  changes no window ID, no focus, no window set — none of the existing
+  detectors fire, leaving the fix to the 1 s catch-all, which looks
+  sluggish. Polling the focused window's size (one extra AX read per tick)
+  catches it in ~100 ms; zoom effectively always targets the focused window.
+
+Apps can decline the resize (minimum sizes) or adjust it (terminals snap to
+their character grid), so bounds that didn't budge are remembered
+(`clampDeclined`) and not re-asked — otherwise a refusing window would get
+resize requests 10×/s.

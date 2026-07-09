@@ -49,13 +49,18 @@ enum AX {
         return _AXUIElementGetWindow(element, &id) == .success ? id : nil
     }
 
+    /// The AX element of the window that currently has keyboard focus in the
+    /// given app, or nil if it can't be determined.
+    static func focusedWindow(inAppWithPID pid: pid_t) -> AXUIElement? {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, 0.25)
+        return copyAttribute(app, kAXFocusedWindowAttribute)
+    }
+
     /// The CGWindowID of the window that currently has keyboard focus in the
     /// given app, or nil if it can't be determined.
     static func focusedWindowID(inAppWithPID pid: pid_t) -> CGWindowID? {
-        let app = AXUIElementCreateApplication(pid)
-        AXUIElementSetMessagingTimeout(app, 0.25)
-        guard let focused: AXUIElement = copyAttribute(app, kAXFocusedWindowAttribute) else { return nil }
-        return windowID(of: focused)
+        focusedWindow(inAppWithPID: pid).flatMap { windowID(of: $0) }
     }
 
     static func title(of element: AXUIElement) -> String? {
@@ -76,6 +81,26 @@ enum AX {
 
     static func setMinimized(_ element: AXUIElement, _ minimized: Bool) {
         AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, minimized as CFTypeRef)
+    }
+
+    /// The window's size in points. (AX geometry uses the same top-left-origin
+    /// global coordinates as the CGWindowList bounds.)
+    static func size(of element: AXUIElement) -> CGSize? {
+        var raw: CFTypeRef?
+        guard
+            AXUIElementCopyAttributeValue(element, kAXSizeAttribute as CFString, &raw) == .success,
+            let value = raw, CFGetTypeID(value) == AXValueGetTypeID()
+        else { return nil }
+        var size = CGSize.zero
+        return AXValueGetValue(value as! AXValue, .cgSize, &size) ? size : nil
+    }
+
+    /// Resize a window, keeping its top-left corner in place. Apps are free
+    /// to refuse or adjust the request (minimum sizes, grid snapping).
+    static func setSize(_ element: AXUIElement, _ size: CGSize) {
+        var size = size
+        guard let value = AXValueCreate(.cgSize, &size) else { return }
+        AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, value)
     }
 
     /// Bring a window to the front of its app and make it the main window.

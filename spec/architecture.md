@@ -30,16 +30,19 @@ nanobarApp (SwiftUI @main, no scenes of its own)
 ## Data flow
 
 1. **Refresh triggers** (all funnel into `WindowStore.refresh()`):
-   - 0.1 s timer tick with three cheap change detectors — active Space ID,
-     focused window ID, set of all normal-layer window IDs — plus an
-     unconditional refresh every 10th tick (≈1 s catch-all).
+   - 0.1 s timer tick with four cheap change detectors — active Space ID,
+     focused window ID, focused window *size* (so zooming a window over the
+     bar is corrected promptly), set of all normal-layer window IDs — plus
+     an unconditional refresh every 10th tick (≈1 s catch-all).
    - `NSWorkspace` notifications (app launched / terminated / activated,
      active Space changed), each followed by a 300 ms settle refresh.
    - 150 ms after any chip click.
 2. **`refresh()`** rebuilds `windowsBySpace` from scratch (see
    window-discovery.md), publishes it only if it actually changed
    (`TaskbarWindow` equality covers only render-relevant fields), then calls
-   `onRefresh`.
+   `onRefresh`. As a side effect it shrinks any full-height window that
+   extends under the bar (see window-discovery.md → "Keeping the bar's strip
+   clear").
 3. **`AppDelegate.syncPanels()`** (the `onRefresh` hook) reconciles the panel
    fleet with the current desktop layout (see panels-and-spaces.md).
 4. **SwiftUI** — each panel's `BarView` observes the store and re-renders its

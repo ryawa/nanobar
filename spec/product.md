@@ -16,6 +16,12 @@ the desktop the window lives on.
   bar (see panels-and-spaces.md). A desktop's bar is created the first time
   the desktop is visited after launch.
 - Chips overflow into a horizontal scroll (no scrollbar).
+- **The bar keeps its strip clear**: a window zoomed (double-click on the
+  title bar) or tiled (green-button options) fills the screen to the bottom
+  edge, under the bar — macOS reserves space only for the Dock. nanobar
+  shrinks such windows so their bottom edge meets the bar's top edge. Only
+  **full-height** windows on the current desktop are touched; a window
+  deliberately dragged partway under the bar stays put.
 - The app is a background app: no Dock icon (`LSUIElement`), no main window.
   A menu-bar icon (`dock.rectangle`) offers *About*, the live Accessibility
   permission state (click opens System Settings), and *Quit* (⌘Q).
@@ -76,6 +82,7 @@ highlight mid-animation).
 | Window opened / closed | ~100 ms |
 | Focus moved (any app) | ~100 ms |
 | Chip clicked | ~150 ms |
+| Window zoomed over the bar → shrunk back | ~100 ms (focused-window size is polled) |
 | App launched / quit / activated | immediate (notification) + 300 ms settle |
 | Title change, minimize via yellow button | ≤ 1 s (catch-all refresh) |
 

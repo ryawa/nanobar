@@ -89,10 +89,15 @@ Minimized windows are collected in a second pass from each app's AX window
 list (`AXMinimized`) and stay on the bar dimmed, on the desktop they were
 minimized from.
 
+macOS reserves screen space only for the Dock, so a window zoomed by
+double-clicking its title bar (or tiled with the green button) fills the
+screen to the bottom edge — under the bar. nanobar detects full-height
+windows overlapping the bar and shrinks them so they stop at its top edge.
+
 The lists refresh on `NSWorkspace` notifications (app launched/quit/activated)
-plus a 0.1 s timer running two cheap checks — did the active Space change, did
-the set of windows change — with a full refresh once per second as a catch-all
-for title changes.
+plus a 0.1 s timer running four cheap checks — did the active Space change,
+did focus move, did the focused window resize, did the set of windows change —
+with a full refresh once per second as a catch-all for title changes.
 
 ## Roadmap
 

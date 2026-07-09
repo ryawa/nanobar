@@ -54,6 +54,25 @@ membership fails open to all desktops — an AX-listed window is certainly
 real, and losing a minimized window (no way to restore it) is the worse
 failure.
 
+## Keeping the bar's strip clear (`clampIfUnderBar`)
+
+macOS reserves screen space only for the Dock; there is no public API for
+another app to do the same. So zooming a window (double-click on the title
+bar) or tiling it fills the visible frame down to the true bottom edge —
+under the bar. During pass 1, any window that is on screen, on the current
+desktop, not minimized, and **spans the full height** of the screen (top
+within ~5 pt of the menu bar's bottom, bottom inside the bar's 40 pt strip)
+is shrunk via `AXSize` so its bottom edge meets the bar's top edge.
+
+- Full-height only: a window deliberately dragged partway under the bar is
+  never touched.
+- Apps may refuse or adjust the resize (minimum sizes, terminals snapping to
+  a character grid). Bounds that didn't budge after a request are remembered
+  in `clampDeclined` so a refusing window isn't re-asked on every refresh.
+- Responsiveness comes from the tick detector polling the focused window's
+  *size*: a zoom changes it, which triggers the refresh that clamps
+  (~100 ms). Zooms of non-focused windows are caught by the 1 s catch-all.
+
 ## Caches (the cross-Space memory)
 
 The AX API only lists windows on the **current** Space, so windows on other

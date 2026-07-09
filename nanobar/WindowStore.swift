@@ -61,6 +61,11 @@ final class WindowStore: NSObject, ObservableObject {
     /// active-window highlight even while the desktop is off screen.
     private var lastFocusedBySpace: [UInt64: CGWindowID] = [:]
     private var lastFocusedWindowID: CGWindowID?
+    private var lastFocusedWindowSize: CGSize?
+
+    /// Bounds for which a window declined (or adjusted away) our shrink
+    /// request, so it isn't re-asked on every refresh. See clampIfUnderBar.
+    private var clampDeclined: [CGWindowID: CGRect] = [:]
 
     /// Begin watching for window changes. Workspace notifications catch app
     /// launches/quits and focus changes. The timer runs two cheap checks
@@ -104,20 +109,25 @@ final class WindowStore: NSObject, ObservableObject {
 
     @objc private func timerFired() {
         ticksSinceRefresh += 1
+        let (focusedID, focusedSize) = Self.currentFocusedWindowState()
         if ticksSinceRefresh >= 10
             || Spaces.activeSpaceID != lastActiveSpace
-            || Self.currentFocusedWindowID() != lastFocusedWindowID
+            || focusedID != lastFocusedWindowID
+            || focusedSize != lastFocusedWindowSize
             || Self.allWindowIDs() != lastWindowIDs {
             refresh()
         }
     }
 
-    /// The window that has keyboard focus right now. Cheap enough to poll, so
-    /// clicking between windows moves the highlight without waiting for the
-    /// once-per-second full refresh.
-    private static func currentFocusedWindowID() -> CGWindowID? {
-        guard AX.isTrusted, let app = NSWorkspace.shared.frontmostApplication else { return nil }
-        return AX.focusedWindowID(inAppWithPID: app.processIdentifier)
+    /// The window that has keyboard focus right now, and its size. Cheap
+    /// enough to poll, so clicking between windows moves the highlight — and
+    /// zooming a window over the bar gets it shrunk back — without waiting
+    /// for the once-per-second full refresh.
+    private static func currentFocusedWindowState() -> (id: CGWindowID?, size: CGSize?) {
+        guard AX.isTrusted, let app = NSWorkspace.shared.frontmostApplication,
+              let window = AX.focusedWindow(inAppWithPID: app.processIdentifier)
+        else { return (nil, nil) }
+        return (AX.windowID(of: window), AX.size(of: window))
     }
 
     /// IDs of every normal-layer window in the system. Cheap enough to poll;
@@ -152,6 +162,7 @@ final class WindowStore: NSObject, ObservableObject {
         // never looked up again.)
         cachedElements = cachedElements.filter { appsByPID[$0.value.pid] != nil }
         cachedTitles = cachedTitles.filter { cachedElements[$0.key] != nil }
+        clampDeclined = clampDeclined.filter { cachedElements[$0.key] != nil }
 
         let layout = Spaces.displayLayout()
         let desktops = layout.orderedUserSpaceIDs
@@ -159,8 +170,10 @@ final class WindowStore: NSObject, ObservableObject {
         guard !desktops.isEmpty else { return }  // CGS hiccup — keep the old lists
 
         // The window that has keyboard focus, for the highlighted chip.
-        let focusedWindowID = frontmostPID.flatMap { AX.focusedWindowID(inAppWithPID: $0) }
+        let focusedWindow = frontmostPID.flatMap { AX.focusedWindow(inAppWithPID: $0) }
+        let focusedWindowID = focusedWindow.flatMap { AX.windowID(of: $0) }
         lastFocusedWindowID = focusedWindowID
+        lastFocusedWindowSize = focusedWindow.flatMap { AX.size(of: $0) }
 
         // Record it against the desktop it's focused *on*, so that desktop's
         // bar keeps the highlight after the user switches away. (No record is
@@ -274,6 +287,18 @@ final class WindowStore: NSObject, ObservableObject {
             let isMinimized = element.map { AX.isMinimized($0) } ?? false
             let title = liveTitle ?? cachedTitles[windowID] ?? app.localizedName ?? "Window"
 
+            // A window zoomed with the title bar's double-click (or tiled with
+            // the green button) fills the screen to the bottom edge and slides
+            // under the bar — macOS reserves space for the Dock but has no
+            // public way for anyone else to do the same. Fix offenders after
+            // the fact by shrinking them to stop at the bar's top edge.
+            if let element, !isMinimized, isOnScreen,
+               let currentSpace, targets.contains(currentSpace),
+               let boundsDict = info[kCGWindowBounds as String] as? [String: Any],
+               let bounds = CGRect(dictionaryRepresentation: boundsDict as CFDictionary) {
+                clampIfUnderBar(windowID, element: element, bounds: bounds)
+            }
+
             for space in targets {
                 chipsBySpace[space, default: []].append(TaskbarWindow(
                     id: windowID,
@@ -348,6 +373,39 @@ final class WindowStore: NSObject, ObservableObject {
             windowsBySpace = chipsBySpace
         }
         onRefresh?()
+    }
+
+    // MARK: - Keeping windows out of the bar's strip
+
+    /// Shrink a window that extends under the bar so its bottom edge meets
+    /// the bar's top edge. Only *full-height* windows are touched — the shape
+    /// zooming and tiling produce — so a window deliberately dragged partway
+    /// under the bar is left alone.
+    private func clampIfUnderBar(_ windowID: CGWindowID, element: AXUIElement, bounds: CGRect) {
+        guard let screen = NSScreen.screens.first else { return }
+
+        // CG window bounds use top-left-origin global coordinates; NSScreen
+        // frames are bottom-left-origin. On the primary screen the x axes
+        // coincide and y converts as (screen height − Cocoa y).
+        let screenHeight = screen.frame.height
+        let barTop = screenHeight - TaskbarPanel.barHeight
+        let menuBarBottom = screenHeight - screen.visibleFrame.maxY
+
+        guard
+            bounds.maxY > barTop + 1,          // reaches into the bar's strip…
+            bounds.minY <= menuBarBottom + 5,  // …spanning from the top of the screen
+            bounds.minX < screen.frame.maxX,   // and horizontally on the bar's screen
+            bounds.maxX > screen.frame.minX
+        else { return }
+
+        // Apps may refuse or adjust the resize (enforced minimum sizes, a
+        // terminal snapping to its character grid). Remember bounds that
+        // didn't budge so a refusing window isn't re-asked 10× a second.
+        guard clampDeclined[windowID] != bounds else { return }
+        AX.setSize(element, CGSize(width: bounds.width, height: barTop - bounds.minY))
+        if AX.size(of: element)?.height == bounds.height {
+            clampDeclined[windowID] = bounds
+        }
     }
 
     // MARK: - Chip clicks

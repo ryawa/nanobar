@@ -1,2 +1,1 @@
-- make maximizing (double click title) not go under the bar
 - immediately dim the chip when clicked not when fully minimized
