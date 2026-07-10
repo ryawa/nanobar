@@ -16,7 +16,9 @@ the desktop the window lives on.
   During a Space-switch animation each desktop slides in/out carrying its own
   bar (see panels-and-spaces.md). A desktop's bar is created the first time
   the desktop is visited after launch.
-- Chips overflow into a horizontal scroll (no scrollbar).
+- Chips overflow into a horizontal scroll (no scrollbar). Trackpad swipes
+  scroll it natively; a mouse's vertical scroll wheel works too (the panel
+  rewrites vertical wheel ticks as horizontal before dispatch).
 - **The bar keeps its strip clear**: a window zoomed (double-click on the
   title bar) or tiled (green-button options) fills the screen to the bottom
   edge, under the bar — macOS reserves space only for the Dock. nanobar

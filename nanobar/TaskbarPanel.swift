@@ -61,6 +61,38 @@ final class TaskbarPanel: NSPanel {
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
 
+    // A mouse's scroll wheel only produces *vertical* ticks, which the bar's
+    // horizontal-only ScrollView ignores. Every event bound for this panel
+    // passes through sendEvent before it's routed to a view, so rewrite
+    // vertical wheel ticks as horizontal ones here. Trackpad and Magic Mouse
+    // swipes (precise deltas, gesture phases) can already scroll sideways and
+    // pass through untouched.
+    override func sendEvent(_ event: NSEvent) {
+        guard event.type == .scrollWheel,
+              !event.hasPreciseScrollingDeltas,            // wheel ticks are coarse; trackpads are precise
+              event.phase == [], event.momentumPhase == [], // not part of a swipe gesture
+              event.scrollingDeltaX == 0, event.scrollingDeltaY != 0,
+              let cgEvent = event.cgEvent?.copy()
+        else {
+            super.sendEvent(event)
+            return
+        }
+        // NSEvent's deltas are read-only, so edit the underlying CGEvent:
+        // wheel deltas live in numbered "axis" fields, axis 1 = vertical,
+        // axis 2 = horizontal, each stored in three representations
+        // (line-based, pixel-based, fixed-point). Move axis 1 to axis 2.
+        let axes: [(vertical: CGEventField, horizontal: CGEventField)] = [
+            (.scrollWheelEventDeltaAxis1, .scrollWheelEventDeltaAxis2),
+            (.scrollWheelEventPointDeltaAxis1, .scrollWheelEventPointDeltaAxis2),
+            (.scrollWheelEventFixedPtDeltaAxis1, .scrollWheelEventFixedPtDeltaAxis2),
+        ]
+        for axis in axes {
+            cgEvent.setDoubleValueField(axis.horizontal, value: cgEvent.getDoubleValueField(axis.vertical))
+            cgEvent.setDoubleValueField(axis.vertical, value: 0)
+        }
+        super.sendEvent(NSEvent(cgEvent: cgEvent) ?? event)
+    }
+
     @objc private func screenLayoutChanged() {
         pinToBottomOfScreen()
     }
