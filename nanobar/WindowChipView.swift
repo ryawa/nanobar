@@ -44,7 +44,7 @@ struct WindowChipView: View {
 
     private var backgroundColor: Color {
         if window.isFocused { return Color.primary.opacity(0.22) }
-        if isHovering { return Color.primary.opacity(0.12) }
-        return Color.primary.opacity(0.05)
+        if isHovering { return Color.primary.opacity(0.18) }
+        return Color.primary.opacity(0.12)
     }
 }

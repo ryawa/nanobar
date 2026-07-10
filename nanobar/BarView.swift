@@ -26,6 +26,6 @@ struct BarView: View {
             .frame(height: TaskbarPanel.barHeight)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.ultraThinMaterial)
+        .background(.regularMaterial)
     }
 }

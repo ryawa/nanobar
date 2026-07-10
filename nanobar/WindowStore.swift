@@ -414,16 +414,13 @@ final class WindowStore: NSObject, ObservableObject {
         guard let app = NSRunningApplication(processIdentifier: window.pid) else { return }
 
         if let element = window.axElement {
+            // A click always focuses: un-minimize first if needed, then raise
+            // the window and bring its app forward.
             if window.isMinimized {
                 AX.setMinimized(element, false)
-                AX.raise(element)
-                app.activate()
-            } else if window.isFocused {
-                AX.setMinimized(element, true)
-            } else {
-                AX.raise(element)
-                app.activate()
             }
+            AX.raise(element)
+            app.activate()
         } else {
             // Degraded mode (no Accessibility permission): the best we can do
             // is bring the whole app forward.

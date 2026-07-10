@@ -25,7 +25,7 @@ is granted (trust is re-checked on every refresh — no relaunch needed):
 |---|---|---|
 | Window enumeration | all desktops | on-screen windows only, size-filtered (≥ 100×80) |
 | Chip labels | window titles | app names |
-| Click | raise / minimize the window | activate the app |
+| Click | raise the window (un-minimizing if needed) | activate the app |
 | Minimized windows | shown, restorable | not shown |
 | Focus highlight | per desktop | none |
 

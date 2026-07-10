@@ -5,8 +5,8 @@ A tiny, open-source, Windows-style taskbar for macOS — in the spirit of
 
 A translucent strip pinned to the bottom of your screen shows **one chip per
 open window** (not per app, like the Dock). Click a chip to focus that window;
-click the focused window's chip to minimize it; click a dimmed (minimized)
-chip to bring it back. Only windows on your **current Space** are shown —
+click a dimmed (minimized) chip to bring it back. Only windows on your
+**current Space** are shown —
 including minimized ones, which stay on the Space they were minimized from.
 
 ## Requirements

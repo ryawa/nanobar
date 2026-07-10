@@ -7,7 +7,8 @@ the desktop the window lives on.
 
 ## The bar
 
-- A translucent strip (ultra-thin material) pinned to the **bottom edge** of
+- A translucent strip (ultra-thin material with a 45 % window-background
+  tint for text contrast) pinned to the **bottom edge** of
   the **primary display**, full width, 40 pt tall, floating above normal
   windows (`.statusBar` level). It occupies the same strip as the Dock; users
   are expected to auto-hide the Dock or keep it on a side.
@@ -34,8 +35,8 @@ fixed chip width 170 pt, full title as tooltip). States:
 | State | Look |
 |---|---|
 | Focused (this desktop's active window) | strong background (primary 22 %) |
-| Hovered | medium background (primary 12 %) |
-| Idle | faint background (primary 5 %) |
+| Hovered | medium background (primary 15 %) |
+| Idle | faint background (primary 10 %) |
 | Minimized | 55 % opacity, no focus highlight |
 
 Chips are sorted by window creation order (ascending `CGWindowID`) so they
@@ -45,10 +46,11 @@ don't reshuffle when focus changes.
 
 | Chip state | Click does |
 |---|---|
-| Not focused | Raise that window and activate its app |
-| Focused | Minimize it |
+| Normal (focused or not) | Raise that window and activate its app |
 | Minimized | Un-minimize, raise, activate |
 | No Accessibility permission | Activate the app (best effort) |
+
+Clicking never minimizes — a click always means "focus this window".
 
 Clicking the bar never steals keyboard focus (non-activating panel +
 first-mouse acceptance: a single click works even though the bar is never the

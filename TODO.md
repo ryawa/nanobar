@@ -1,1 +1,0 @@
-- immediately dim the chip when clicked not when fully minimized
