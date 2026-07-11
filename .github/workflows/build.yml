@@ -24,6 +24,12 @@ jobs:
             -derivedDataPath build \
             CODE_SIGNING_ALLOWED=NO
 
+      - name: Ad-hoc sign
+        run: |
+          codesign --deep --force --sign - \
+          --identifier com.ryawa.nanobar \
+          build/Build/Products/Release/nanobar.app
+
       - name: Zip app
         run: |
           cd build/Build/Products/Release
